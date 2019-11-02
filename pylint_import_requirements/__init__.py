@@ -17,7 +17,7 @@ import pathlib
 import sys
 from collections import namedtuple
 from distutils.core import run_setup
-from typing import Optional, Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 import astroid
 import importlib_metadata
@@ -164,7 +164,7 @@ class ImportRequirementsLinter(BaseChecker):
         # Its a namespace module. If we import any names, try to resolve them instead
         if names:
             for name in names:
-                self.check_import(node, modname=f"{spec.name}.{name}", names=None)
+                self.check_import(node, modname="{}.{}".format(spec.name, name), names=None)
             return
 
         # We tried our best, but we can only verify that some part of the namespace is installed
