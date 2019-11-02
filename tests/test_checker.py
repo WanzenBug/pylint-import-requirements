@@ -33,7 +33,7 @@ def mock_package(tmpdir) -> typing.Iterator[None]:
         encoding='utf-8',
     )
     old_cwd = os.getcwd()
-    os.chdir(tmpdir)
+    os.chdir(tmpdir.strpath)
     old_path = copy.copy(sys.path)
     sys.path.insert(0, tmpdir.strpath)
     try:
