@@ -36,7 +36,6 @@ def mock_package(tmpdir) -> typing.Iterator[None]:
     os.chdir(tmpdir)
     old_path = copy.copy(sys.path)
     sys.path.insert(0, tmpdir.strpath)
-    os.system('ls -la')
     try:
         yield
     finally:
