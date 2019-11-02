@@ -15,4 +15,5 @@ install:
 - pipenv graph
 
 script:
+- pipenv run pylint pylint_import_requirements
 - pipenv run pytest --cov=pylint_import_requirements --cov-report=term-missing
