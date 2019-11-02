@@ -1,0 +1,2 @@
+def ham():
+    print('egg')
