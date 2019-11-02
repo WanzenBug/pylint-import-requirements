@@ -5,11 +5,9 @@ import isort
 import setuptools.monkey as simian
 from importlib_metadata import Distribution
 
-from _other import ham
-
 
 def main():
-    print(abc, isort, hypocycloid, simian, Distribution, ham)
+    print(abc, isort, hypocycloid, simian, Distribution)
 
 
 if __name__ == '__main__':
