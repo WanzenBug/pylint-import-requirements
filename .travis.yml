@@ -1,0 +1,19 @@
+language: python
+
+python:
+- 3.5
+- 3.6
+- 3.7
+- 3.8
+
+# required for python >= 3.7
+dist: xenial
+
+install:
+- pip install pipenv
+- pipenv sync --dev
+- pipenv graph
+
+script:
+- pipenv run pylint pylint_import_requirements
+- pipenv run pytest --cov=pylint_import_requirements --cov-report=term-missing

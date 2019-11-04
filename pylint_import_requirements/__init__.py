@@ -17,7 +17,7 @@ import pathlib
 import sys
 from collections import namedtuple
 from distutils.core import run_setup
-from typing import Optional, Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 import astroid
 import importlib_metadata
@@ -80,7 +80,7 @@ class ImportRequirementsLinter(BaseChecker):
             # Get a list of files created by the distribution
             distribution_files = dist.files
             # Resolve the (relative) paths to absolute paths
-            resolved_filepaths = {x.locate().resolve() for x in distribution_files}
+            resolved_filepaths = {x.locate() for x in distribution_files}
 
             distribution_file_info = {
                 p: _FileInfo(p, dist, allowed) for p in resolved_filepaths
@@ -164,7 +164,7 @@ class ImportRequirementsLinter(BaseChecker):
         # Its a namespace module. If we import any names, try to resolve them instead
         if names:
             for name in names:
-                self.check_import(node, modname=f"{spec.name}.{name}", names=None)
+                self.check_import(node, modname="{}.{}".format(spec.name, name), names=None)
             return
 
         # We tried our best, but we can only verify that some part of the namespace is installed
