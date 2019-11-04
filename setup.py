@@ -19,6 +19,7 @@ setup(
     url="http://github.com/Catalysts/pylint-import-requirements",
     packages=["pylint_import_requirements"],
     long_description=open(README_PATH).read(),
+    long_description_content_type="text/markdown",
     install_requires=[
         "pylint",
         "astroid",
