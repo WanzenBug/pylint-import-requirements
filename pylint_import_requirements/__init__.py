@@ -80,7 +80,7 @@ class ImportRequirementsLinter(BaseChecker):
             # Get a list of files created by the distribution
             distribution_files = dist.files
             # Resolve the (relative) paths to absolute paths
-            resolved_filepaths = {x.locate().resolve() for x in distribution_files}
+            resolved_filepaths = {x.locate() for x in distribution_files}
 
             distribution_file_info = {
                 p: _FileInfo(p, dist, allowed) for p in resolved_filepaths
