@@ -121,21 +121,21 @@ class ImportRequirementsLinter(BaseChecker):
         """Run the actual check
 
         It works like this:
-
-        1. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
-            1a. If we cannot import, then there is probably something broken -> unresolved-import
-        2. We check the `origin` field of the spec. This normally points to the file to be imported.
-            2a. If we cannot access the origin path, one of two things can be the reason:
-                The module is built-in or a namespace module
-            2b. If its built-in we return
-            2c. If we import names (i.e. the foo in `from bla import foo`) we try to import the
+        1. If its in the stdlib we return immediately, nothing to fix there
+        2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
+            2a. If we cannot import, then there is probably something broken -> unresolved-import
+        3. We check the `origin` field of the spec. This normally points to the file to be imported
+            3a. If we cannot access the origin path, it must be a namespace module (since we already
+                filtered stdlib modules)
+            3b. If we import names (i.e. the foo in `from bla import foo`) we try to import the
                 `full` module name (`bla.foo`) and run our checks on that
-            2d. We allow partial matches. This means we get the namespace module search path and
+            3c. We allow partial matches. This means we get the namespace module search path and
                 verify that at least one package adds something to the module
-        3. We ignore any module that is not loaded from a `site-packages` location, since we assume
-            they are either the current module or built-in
         4. We verify that the imported file is installed from one of the allowed distributions
         """
+        if self._is_stdlib_module(modname):
+            return
+
         spec = importlib.util.find_spec(modname, package=node.frame().name)
         if not spec:
             self.add_message("unresolved-import", node=node, args=modname)
@@ -143,11 +143,8 @@ class ImportRequirementsLinter(BaseChecker):
 
         origin_path = spec.origin
         if not origin_path:
-            # Either namespace package or built-in
-            self.check_module_without_origin(node, spec, names)
-            return
-
-        if self._is_builtin_module(modname):
+            # Must be namespace package
+            self.check_namespace_module(node, spec, names)
             return
 
         resolved_origin = pathlib.Path(origin_path).resolve()
@@ -158,12 +155,9 @@ class ImportRequirementsLinter(BaseChecker):
         if not known_info:
             self.add_message("missing-requirement", node=node, args=(modname, "<unknown>"))
 
-    def check_module_without_origin(self, node, spec, names: Optional[List[str]]):
-        """Try to check a module spec which has no origin parameter set"""
-        if spec.name in sys.builtin_module_names:
-            return
-
-        # Its a namespace module. If we import any names, try to resolve them instead
+    def check_namespace_module(self, node, spec, names: Optional[List[str]]):
+        """Try to check a module spec of a namespace module"""
+        # If we import any names, try to resolve them instead
         if names:
             for name in names:
                 self.check_import(node, modname="{}.{}".format(spec.name, name), names=None)
@@ -185,7 +179,7 @@ class ImportRequirementsLinter(BaseChecker):
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
 
-    def _is_builtin_module(self, package):
+    def _is_stdlib_module(self, package):
         """Check if the given path is from a built-in module or not"""
 
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
