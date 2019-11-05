@@ -22,6 +22,7 @@ from typing import Dict, List, Optional, Set
 import astroid
 import importlib_metadata
 from importlib_metadata import Distribution
+from isort import isort
 from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
@@ -66,6 +67,7 @@ class ImportRequirementsLinter(BaseChecker):
         super(ImportRequirementsLinter, self).__init__(linter)
 
         self.known_files = {}  # type: Dict[pathlib.PurePath, _FileInfo]
+        self.isort_obj = isort.SortImports(file_contents="")
         all_loadable_distributions = set(
             importlib_metadata.distributions()
         )  # type: Set[Distribution]
@@ -145,11 +147,11 @@ class ImportRequirementsLinter(BaseChecker):
             self.check_module_without_origin(node, spec, names)
             return
 
-        if "site-packages" not in origin_path:
+        if self._is_builtin_module(modname):
             return
 
-        origin_path = pathlib.PurePath(origin_path)
-        known_info = self.known_files.get(origin_path)
+        resolved_origin = pathlib.Path(origin_path).resolve()
+        known_info = self.known_files.get(resolved_origin)
         if known_info and not known_info.allowed:
             candidate_name = known_info.source.metadata["Name"]
             self.add_message("missing-requirement", node=node, args=(modname, candidate_name))
@@ -182,6 +184,13 @@ class ImportRequirementsLinter(BaseChecker):
         alternative_dist_msg = ",".join((str(o.metadata["Name"]) for o in other_candidates))
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
+
+    def _is_builtin_module(self, package):
+        """Check if the given path is from a built-in module or not"""
+
+        # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
+        import_category = self.isort_obj.place_module(package)
+        return import_category in {"FUTURE", "STDLIB"}
 
 
 def register(linter):
