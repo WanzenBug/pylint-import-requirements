@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ecce70792e3bf4666c84c5bda00db515b5101cfc774b71d584ee4f01e8a44622"
+            "sha256": "f90f76e0c5519b689a065b152a27ce4e98d8c9423d7d1844d84be3e38c58130c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -230,12 +230,19 @@
             ],
             "version": "==1.8.0"
         },
+        "pylint-import-requirements-test-namespace": {
+            "path": "./tests/test-packages/namespace"
+        },
+        "pylint-import-requirements-test-simple": {
+            "editable": true,
+            "path": "./tests/test-packages/simple"
+        },
         "pyparsing": {
             "hashes": [
-                "sha256:0961bf3429691b9cd7e3695a37ee8bc18e95c56ac1271dc2bbc41697062d1b6d",
-                "sha256:8997c62f779045b07273e124bbe1d03e2eebb9a38a7ef0798fea4bae72b4b6a3"
+                "sha256:4acadc9a2b96c19fe00932a38ca63e601180c39a189a696abce1eaab641447e1",
+                "sha256:61b5ed888beab19ddccab3478910e2076a6b5a0295dffc43021890e136edf764"
             ],
-            "version": "==2.4.3"
+            "version": "==2.4.4"
         },
         "pytest": {
             "hashes": [

@@ -73,6 +73,13 @@ def test_clean_importfrom(code):
     ('import importlib_metadata', ('importlib_metadata', 'importlib-metadata')),
     ('import setuptools.monkey', ('setuptools.monkey', 'setuptools')),
     ('import setuptools.monkey as simian', ('setuptools.monkey', 'setuptools')),
+    ('import pylint_import_requirements_test_namespace',
+     ('pylint_import_requirements_test_namespace', '')),
+    ('import pylint_import_requirements_test_namespace.mod',
+     ('pylint_import_requirements_test_namespace.mod', 'pylint-import-requirements-test-namespace')),
+    # editable:
+    ('import pylint_import_requirements_test_simple',
+     ('pylint_import_requirements_test_simple', 'pylint-import-requirements-test-simple')),
 ])
 def test_missing_requirement_import(code, expected_msg_args):
     import_node = astroid.extract_node(code)
@@ -94,6 +101,13 @@ def test_missing_requirement_import(code, expected_msg_args):
      ('setuptools', 'setuptools')),
     ('from setuptools.monkey import patch_all as make_great_again',
      ('setuptools.monkey', 'setuptools')),
+    ('from pylint_import_requirements_test_namespace import mod',
+     ('pylint_import_requirements_test_namespace.mod', 'pylint-import-requirements-test-namespace')),
+    ('from pylint_import_requirements_test_namespace.mod import func',
+     ('pylint_import_requirements_test_namespace.mod', 'pylint-import-requirements-test-namespace')),
+    # editable:
+    ('from pylint_import_requirements_test_simple import func',
+     ('pylint_import_requirements_test_simple', 'pylint-import-requirements-test-simple')),
 ])
 def test_missing_requirement_importfrom(code, expected_msg_args):
     importfrom_node = astroid.extract_node(code)

@@ -9,6 +9,8 @@ pylint-import-requirements = {editable = true,path = "."}
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
+pylint-import-requirements-test-simple = {editable = true, path = "./tests/test-packages/simple"}
+pylint-import-requirements-test-namespace = {path = "./tests/test-packages/namespace"}
 
 [requires]
 python_version = "3"
