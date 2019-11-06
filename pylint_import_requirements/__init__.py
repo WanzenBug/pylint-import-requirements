@@ -43,16 +43,6 @@ class ImportRequirementsLinter(BaseChecker):
     # This class variable declares the messages (ie the warnings and errors)
     # that the checker can emit.
     msgs = {
-        # Each message has a code, a message that the user will see,
-        # a unique symbol that identifies the message,
-        # and a detailed help message
-        # that will be included in the documentation.
-        "E6666": (
-            "import '%s' does not resolve to a location",
-            "unresolved-import",
-            "the module could not be imported. This may indicate a misspelled module name or a "
-            "module that is not installed ",
-        ),
         "W6667": (
             "import '%s' not covered by 'install_requires', from distribution: '%s'",
             "missing-requirement",
@@ -122,7 +112,7 @@ class ImportRequirementsLinter(BaseChecker):
         It works like this:
         1. If its in the stdlib or same package we return immediately, nothing to fix there
         2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
-            2a. If we cannot import, then there is probably something broken -> unresolved-import
+            2a. If we cannot import, then there should be an import-error anyways
         3. We check the `origin` field of the spec. This normally points to the file to be imported
             3a. If we cannot access the origin path, it must be a namespace module (since we already
                 filtered stdlib modules)
@@ -132,20 +122,23 @@ class ImportRequirementsLinter(BaseChecker):
                 verify that at least one package adds something to the module
         4. We verify that the imported file is installed from one of the allowed distributions
         """
+        # Step 1
         if self._is_stdlib_or_first_party_module(modname):
             return
 
+        # Step 2
         spec = importlib.util.find_spec(modname, package=node.frame().name)
         if not spec:
-            self.add_message("unresolved-import", node=node, args=modname)
             return
 
+        # Step 3
         origin_path = spec.origin
         if not origin_path:
             # Must be namespace package
             self.check_namespace_module(node, spec, names)
             return
 
+        # Step 4
         resolved_origin = pathlib.Path(origin_path).resolve()
         known_info = self.known_files.get(resolved_origin)
         if known_info and not known_info.allowed:
