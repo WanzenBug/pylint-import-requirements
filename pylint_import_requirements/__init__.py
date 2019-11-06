@@ -14,7 +14,6 @@ The plugin expects a `setup.py` file to exist in the working directory
 """
 import importlib.util
 import pathlib
-import sys
 from collections import namedtuple
 from distutils.core import run_setup
 from typing import Dict, List, Optional, Set
@@ -22,6 +21,7 @@ from typing import Dict, List, Optional, Set
 import astroid
 import importlib_metadata
 from importlib_metadata import Distribution
+from isort import isort
 from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
@@ -43,16 +43,6 @@ class ImportRequirementsLinter(BaseChecker):
     # This class variable declares the messages (ie the warnings and errors)
     # that the checker can emit.
     msgs = {
-        # Each message has a code, a message that the user will see,
-        # a unique symbol that identifies the message,
-        # and a detailed help message
-        # that will be included in the documentation.
-        "E6666": (
-            "import '%s' does not resolve to a location",
-            "unresolved-import",
-            "the module could not be imported. This may indicate a misspelled module name or a "
-            "module that is not installed ",
-        ),
         "W6667": (
             "import '%s' not covered by 'install_requires', from distribution: '%s'",
             "missing-requirement",
@@ -66,6 +56,7 @@ class ImportRequirementsLinter(BaseChecker):
         super(ImportRequirementsLinter, self).__init__(linter)
 
         self.known_files = {}  # type: Dict[pathlib.PurePath, _FileInfo]
+        self.isort_obj = isort.SortImports(file_contents="")
         all_loadable_distributions = set(
             importlib_metadata.distributions()
         )  # type: Set[Distribution]
@@ -119,49 +110,46 @@ class ImportRequirementsLinter(BaseChecker):
         """Run the actual check
 
         It works like this:
-
-        1. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
-            1a. If we cannot import, then there is probably something broken -> unresolved-import
-        2. We check the `origin` field of the spec. This normally points to the file to be imported.
-            2a. If we cannot access the origin path, one of two things can be the reason:
-                The module is built-in or a namespace module
-            2b. If its built-in we return
-            2c. If we import names (i.e. the foo in `from bla import foo`) we try to import the
+        1. If its in the stdlib or same package we return immediately, nothing to fix there
+        2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
+            2a. If we cannot import, then there should be an import-error anyways
+        3. We check the `origin` field of the spec. This normally points to the file to be imported
+            3a. If we cannot access the origin path, it must be a namespace module (since we already
+                filtered stdlib modules)
+            3b. If we import names (i.e. the foo in `from bla import foo`) we try to import the
                 `full` module name (`bla.foo`) and run our checks on that
-            2d. We allow partial matches. This means we get the namespace module search path and
+            3c. We allow partial matches. This means we get the namespace module search path and
                 verify that at least one package adds something to the module
-        3. We ignore any module that is not loaded from a `site-packages` location, since we assume
-            they are either the current module or built-in
         4. We verify that the imported file is installed from one of the allowed distributions
         """
+        # Step 1
+        if self._is_stdlib_or_first_party_module(modname):
+            return
+
+        # Step 2
         spec = importlib.util.find_spec(modname, package=node.frame().name)
         if not spec:
-            self.add_message("unresolved-import", node=node, args=modname)
             return
 
+        # Step 3
         origin_path = spec.origin
         if not origin_path:
-            # Either namespace package or built-in
-            self.check_module_without_origin(node, spec, names)
+            # Must be namespace package
+            self.check_namespace_module(node, spec, names)
             return
 
-        if "site-packages" not in origin_path:
-            return
-
-        origin_path = pathlib.PurePath(origin_path)
-        known_info = self.known_files.get(origin_path)
+        # Step 4
+        resolved_origin = pathlib.Path(origin_path).resolve()
+        known_info = self.known_files.get(resolved_origin)
         if known_info and not known_info.allowed:
             candidate_name = known_info.source.metadata["Name"]
             self.add_message("missing-requirement", node=node, args=(modname, candidate_name))
         if not known_info:
             self.add_message("missing-requirement", node=node, args=(modname, "<unknown>"))
 
-    def check_module_without_origin(self, node, spec, names: Optional[List[str]]):
-        """Try to check a module spec which has no origin parameter set"""
-        if spec.name in sys.builtin_module_names:
-            return
-
-        # Its a namespace module. If we import any names, try to resolve them instead
+    def check_namespace_module(self, node, spec, names: Optional[List[str]]):
+        """Try to check a module spec of a namespace module"""
+        # If we import any names, try to resolve them instead
         if names:
             for name in names:
                 self.check_import(node, modname="{}.{}".format(spec.name, name), names=None)
@@ -182,6 +170,13 @@ class ImportRequirementsLinter(BaseChecker):
         alternative_dist_msg = ",".join((str(o.metadata["Name"]) for o in other_candidates))
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
+
+    def _is_stdlib_or_first_party_module(self, package):
+        """Check if the given path is from a built-in module or not"""
+
+        # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
+        import_category = self.isort_obj.place_module(package)
+        return import_category in {"FUTURE", "STDLIB", "FIRSTPARTY"}
 
 
 def register(linter):

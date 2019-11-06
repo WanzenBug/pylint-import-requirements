@@ -21,6 +21,7 @@ setup(
         "astroid",
         "importlib-metadata",
         "setuptools",
+        "isort",
     ],
     tests_require=[
         "pytest"

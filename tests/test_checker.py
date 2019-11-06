@@ -104,25 +104,3 @@ def test_missing_requirement_importfrom(code, expected_msg_args):
     )
     with expect_messages([expected_msg]) as checker:
         checker.visit_importfrom(importfrom_node)
-
-
-def test_unresolved_import():
-    import_node = astroid.extract_node('import none_existing_module')
-    expected_msg = pylint.testutils.Message(
-        msg_id='unresolved-import',
-        args='none_existing_module',
-        node=import_node,
-    )
-    with expect_messages([expected_msg]) as checker:
-        checker.visit_import(import_node)
-
-
-def test_unresolved_importfrom():
-    import_nodefrom = astroid.extract_node('from none_existing_module import func')
-    expected_msg = pylint.testutils.Message(
-        msg_id='unresolved-import',
-        args='none_existing_module',
-        node=import_nodefrom,
-    )
-    with expect_messages([expected_msg]) as checker:
-        checker.visit_importfrom(import_nodefrom)
