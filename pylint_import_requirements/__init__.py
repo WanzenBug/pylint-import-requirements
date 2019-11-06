@@ -14,7 +14,6 @@ The plugin expects a `setup.py` file to exist in the working directory
 """
 import importlib.util
 import pathlib
-import sys
 from collections import namedtuple
 from distutils.core import run_setup
 from typing import Dict, List, Optional, Set
@@ -121,7 +120,7 @@ class ImportRequirementsLinter(BaseChecker):
         """Run the actual check
 
         It works like this:
-        1. If its in the stdlib we return immediately, nothing to fix there
+        1. If its in the stdlib or same package we return immediately, nothing to fix there
         2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
             2a. If we cannot import, then there is probably something broken -> unresolved-import
         3. We check the `origin` field of the spec. This normally points to the file to be imported
@@ -133,7 +132,7 @@ class ImportRequirementsLinter(BaseChecker):
                 verify that at least one package adds something to the module
         4. We verify that the imported file is installed from one of the allowed distributions
         """
-        if self._is_stdlib_module(modname):
+        if self._is_stdlib_or_first_party_module(modname):
             return
 
         spec = importlib.util.find_spec(modname, package=node.frame().name)
@@ -179,12 +178,12 @@ class ImportRequirementsLinter(BaseChecker):
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
 
-    def _is_stdlib_module(self, package):
+    def _is_stdlib_or_first_party_module(self, package):
         """Check if the given path is from a built-in module or not"""
 
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
         import_category = self.isort_obj.place_module(package)
-        return import_category in {"FUTURE", "STDLIB"}
+        return import_category in {"FUTURE", "STDLIB", "FIRSTPARTY"}
 
 
 def register(linter):
