@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2019-11-11
+### Fix
+- Fix namespace package detection for python versions < 3.7
+
 ## [1.0.2] - 2019-11-11
 ### Removed
 - 'unresolved-import' message (covered by pylint 'import-error' already)
@@ -20,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2019-10-31
 
-[Unreleased]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.2...HEAD
-[1.0.2]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.0...v1.0.2
+[Unreleased]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/WanzenBug/pylint-import-requirements/releases/tag/v1.0.0

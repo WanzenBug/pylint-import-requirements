@@ -75,6 +75,8 @@ def test_clean_importfrom(code):
     ('import importlib_metadata', ('importlib_metadata', 'importlib-metadata')),
     ('import setuptools.monkey', ('setuptools.monkey', 'setuptools')),
     ('import setuptools.monkey as simian', ('setuptools.monkey', 'setuptools')),
+    ('import name', ('name', 'namespace')),
+    ('import name.space', ('name.space', 'namespace')),
 ])
 def test_missing_requirement_import(code, expected_msg_args):
     import_node = astroid.extract_node(code)
@@ -96,6 +98,8 @@ def test_missing_requirement_import(code, expected_msg_args):
      ('setuptools', 'setuptools')),
     ('from setuptools.monkey import patch_all as make_great_again',
      ('setuptools.monkey', 'setuptools')),
+    ('from name import space', ('name.space', 'namespace')),
+    ('from name.space import hello_world', ('name.space', 'namespace')),
 ])
 def test_missing_requirement_importfrom(code, expected_msg_args):
     importfrom_node = astroid.extract_node(code)

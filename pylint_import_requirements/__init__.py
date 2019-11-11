@@ -14,6 +14,7 @@ The plugin expects a `setup.py` file to exist in the working directory
 """
 import importlib.util
 import pathlib
+import sys
 from collections import namedtuple
 from distutils.core import run_setup
 from typing import Dict, List, Optional, Set
@@ -27,6 +28,16 @@ from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
 
 _FileInfo = namedtuple("_FileInfo", ("path", "source", "allowed",))
+
+
+def _is_namespace_spec(spec) -> bool:
+    """Check whether the given spec is from a namespace module or not"""
+    if sys.version_info < (3, 7, 0):
+        # https://github.com/python/cpython/blob/86c17c06c9420040c79c29ecf924741f37975342/Lib/importlib/_bootstrap_external.py#L1165
+        return spec.origin == "namespace"
+    # https://github.com/python/cpython/blob/917dbe350a762ed6d75b7d074f3fb87975ba717b/Lib/importlib/_bootstrap_external.py#L1288
+    # https://github.com/python/cpython/pull/5481
+    return spec.origin is None
 
 
 class ImportRequirementsLinter(BaseChecker):
@@ -132,14 +143,13 @@ class ImportRequirementsLinter(BaseChecker):
             return
 
         # Step 3
-        origin_path = spec.origin
-        if not origin_path:
+        if _is_namespace_spec(spec):
             # Must be namespace package
             self.check_namespace_module(node, spec, names)
             return
 
         # Step 4
-        resolved_origin = pathlib.Path(origin_path).resolve()
+        resolved_origin = pathlib.Path(spec.origin).resolve()
         known_info = self.known_files.get(resolved_origin)
         if known_info and not known_info.allowed:
             candidate_name = known_info.source.metadata["Name"]

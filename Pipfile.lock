@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c58131c194d67935427db4b04ba2a24006e6954887c39a8f88eb2273b318acbe"
+            "sha256": "48032d04f28bc4a391b5e285940e28079dbd6b1f99e5789dd603d94964506731"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -200,6 +200,9 @@
                 "sha256:92b8c4b06dac4f0611c0729b2f2ede52b2e1bac1ab48f089c7ddc12e26bb60c4"
             ],
             "version": "==7.2.0"
+        },
+        "namespace": {
+            "path": "./tests/test-packages/namespace"
         },
         "packaging": {
             "hashes": [
