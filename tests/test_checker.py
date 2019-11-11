@@ -24,7 +24,7 @@ def expect_messages(expected_messages: typing.List[pylint.testutils.Message]) \
 def mock_package(tmpdir) -> typing.Iterator[None]:
     tmpdir.join('setup.py').write_text(
         "import setuptools\n"
-        "setuptools.setup(install_requires=['astroid', 'pylint'])\n",
+        "setuptools.setup(install_requires=['astroid', 'pylint', 'UppercaSe'])\n",
         encoding='utf-8',
     )
     tmpdir.join('_test_module.py').write_text(
@@ -49,6 +49,7 @@ def mock_package(tmpdir) -> typing.Iterator[None]:
     'import astroid as hypocycloid',
     'import pylint.testutils',
     'import _test_module',
+    'import uppercase',
 ])
 def test_clean_import(code):
     import_node = astroid.extract_node(code)
@@ -61,6 +62,7 @@ def test_clean_import(code):
     'from astroid import extract_node as astroid_extract_node',
     'from pylint.testutils import Message, UnittestLinter',
     'from _test_module import hello',
+    'from uppercase import bla',
 ])
 def test_clean_importfrom(code):
     importfrom_node = astroid.extract_node(code)
