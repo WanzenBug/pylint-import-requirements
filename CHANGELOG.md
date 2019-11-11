@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fix
 - Detection of first vs third-party modules (now supports VCS deps)
+- Packages with uppercase letters are detected correctly
 
 ## [1.0.1] - 2019-11-05
 ### Fix
