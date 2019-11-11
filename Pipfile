@@ -9,6 +9,7 @@ pylint-import-requirements = {editable = true,path = "."}
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
+uppercase = {path = "./tests/test-packages/uppercase"}
 
 [requires]
 python_version = "3"

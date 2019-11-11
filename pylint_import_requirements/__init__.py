@@ -62,7 +62,7 @@ class ImportRequirementsLinter(BaseChecker):
         )  # type: Set[Distribution]
 
         allowed_distributions = {
-            get_distribution(x).key for x in run_setup("setup.py").install_requires
+            get_distribution(x).project_name for x in run_setup("setup.py").install_requires
         }
 
         for dist in all_loadable_distributions:
