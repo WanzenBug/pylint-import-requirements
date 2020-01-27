@@ -59,7 +59,15 @@ class ImportRequirementsLinter(BaseChecker):
             "missing-requirement",
             "all import statements should be directly provided by packages which are first order "
             "dependencies",
-        )
+        ),
+        "W6668": (
+            "install_requires: '%s' does not seem to be used",
+            "unused-requirement",
+            "all requirements should be used in code at least once",
+            {
+                "scope": "package"
+            }
+        ),
     }
 
     def __init__(self, linter):
@@ -72,13 +80,16 @@ class ImportRequirementsLinter(BaseChecker):
             importlib_metadata.distributions()
         )  # type: Set[Distribution]
 
-        allowed_distributions = {
-            get_distribution(x).project_name for x in run_setup("setup.py").install_requires
+        setup_result = run_setup("setup.py")
+        self.first_party_modules = setup_result.packages
+        self.allowed_distributions = {
+            get_distribution(x).project_name for x in setup_result.install_requires
         }
+        self.visited_distributions = set()
 
         for dist in all_loadable_distributions:
             dist_name = dist.metadata["Name"]
-            allowed = dist_name in allowed_distributions
+            allowed = dist_name in self.allowed_distributions
             # Get a list of files created by the distribution
             distribution_files = dist.files
             # Resolve the (relative) paths to absolute paths
@@ -117,13 +128,21 @@ class ImportRequirementsLinter(BaseChecker):
         names = [name for name, _alias in node.names]
         self.check_import(node, modname, names)
 
+    def open(self):
+        self.visited_distributions = set()
+
+    def close(self):
+        superfluous_distributions = self.allowed_distributions - self.visited_distributions
+        for name in superfluous_distributions:
+            self.add_message("unused-requirement", line=0, args=(name,))
+
     def check_import(self, node, modname: str, names: Optional[List[str]] = None):
         """Run the actual check
 
         It works like this:
-        1. If its in the stdlib or same package we return immediately, nothing to fix there
-        2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
-            2a. If we cannot import, then there should be an import-error anyways
+        1. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
+            1a. If we cannot import, then there should be an import-error anyways
+        2. If its in the stdlib or same package we return immediately, nothing to fix there
         3. We check the `origin` field of the spec. This normally points to the file to be imported
             3a. If we cannot access the origin path, it must be a namespace module (since we already
                 filtered stdlib modules)
@@ -133,13 +152,14 @@ class ImportRequirementsLinter(BaseChecker):
                 verify that at least one package adds something to the module
         4. We verify that the imported file is installed from one of the allowed distributions
         """
+
         # Step 1
-        if self._is_stdlib_or_first_party_module(modname):
+        spec = importlib.util.find_spec(modname, package=node.frame().name)
+        if not spec:
             return
 
         # Step 2
-        spec = importlib.util.find_spec(modname, package=node.frame().name)
-        if not spec:
+        if self._is_stdlib_or_first_party_module(modname, spec):
             return
 
         # Step 3
@@ -151,6 +171,9 @@ class ImportRequirementsLinter(BaseChecker):
         # Step 4
         resolved_origin = pathlib.Path(spec.origin).resolve()
         known_info = self.known_files.get(resolved_origin)
+        if known_info:
+            self.visited_distributions.add(known_info.source.metadata["Name"])
+
         if known_info and not known_info.allowed:
             candidate_name = known_info.source.metadata["Name"]
             self.add_message("missing-requirement", node=node, args=(modname, candidate_name))
@@ -181,12 +204,17 @@ class ImportRequirementsLinter(BaseChecker):
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
 
-    def _is_stdlib_or_first_party_module(self, package):
+    def _is_stdlib_or_first_party_module(self, module, spec):
         """Check if the given path is from a built-in module or not"""
 
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
-        import_category = self.isort_obj.place_module(package)
-        return import_category in {"FUTURE", "STDLIB", "FIRSTPARTY"}
+        import_category = self.isort_obj.place_module(module)
+        if import_category in {"FUTURE", "STDLIB"}:
+            return True
+        if import_category == "FIRSTPARTY":
+            assert spec.origin, f"Got alleged first party module '{module}' but it has no path!"
+            return pathlib.Path(".").resolve() in pathlib.Path(spec.origin).resolve().parents
+        return False
 
 
 def register(linter):
