@@ -81,7 +81,6 @@ class ImportRequirementsLinter(BaseChecker):
         )  # type: Set[Distribution]
 
         setup_result = run_setup("setup.py")
-        self.first_party_modules = setup_result.packages
         self.allowed_distributions = {
             get_distribution(x).project_name for x in setup_result.install_requires
         }
@@ -140,9 +139,9 @@ class ImportRequirementsLinter(BaseChecker):
         """Run the actual check
 
         It works like this:
-        1. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
-            1a. If we cannot import, then there should be an import-error anyways
-        2. If its in the stdlib or same package we return immediately, nothing to fix there
+        1. If its in the stdlib, nothing to fix there
+        2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
+            2a. If we cannot import, then there should be an import-error anyways
         3. We check the `origin` field of the spec. This normally points to the file to be imported
             3a. If we cannot access the origin path, it must be a namespace module (since we already
                 filtered stdlib modules)
@@ -150,16 +149,18 @@ class ImportRequirementsLinter(BaseChecker):
                 `full` module name (`bla.foo`) and run our checks on that
             3c. We allow partial matches. This means we get the namespace module search path and
                 verify that at least one package adds something to the module
-        4. We verify that the imported file is installed from one of the allowed distributions
+        4. If the imported file is contained in the same directory as we are currently in, it is
+           a first party package, so it is automatically allowed
+        5. We verify that the imported file is installed from one of the allowed distributions
         """
 
         # Step 1
-        spec = importlib.util.find_spec(modname, package=node.frame().name)
-        if not spec:
+        if self._is_stdlib_module(modname):
             return
 
         # Step 2
-        if self._is_stdlib_or_first_party_module(modname, spec):
+        spec = importlib.util.find_spec(modname, package=node.frame().name)
+        if not spec:
             return
 
         # Step 3
@@ -169,6 +170,10 @@ class ImportRequirementsLinter(BaseChecker):
             return
 
         # Step 4
+        if pathlib.Path(".").resolve() in pathlib.Path(spec.origin).resolve().parents:
+            return
+
+        # Step 5
         resolved_origin = pathlib.Path(spec.origin).resolve()
         known_info = self.known_files.get(resolved_origin)
         if known_info:
@@ -204,17 +209,12 @@ class ImportRequirementsLinter(BaseChecker):
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
 
-    def _is_stdlib_or_first_party_module(self, module, spec):
+    def _is_stdlib_module(self, module):
         """Check if the given path is from a built-in module or not"""
 
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
         import_category = self.isort_obj.place_module(module)
-        if import_category in {"FUTURE", "STDLIB"}:
-            return True
-        if import_category == "FIRSTPARTY":
-            assert spec.origin, f"Got alleged first party module '{module}' but it has no path!"
-            return pathlib.Path(".").resolve() in pathlib.Path(spec.origin).resolve().parents
-        return False
+        return import_category in {"FUTURE", "STDLIB"}
 
 
 def register(linter):
