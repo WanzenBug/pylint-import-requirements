@@ -110,3 +110,55 @@ def test_missing_requirement_importfrom(code, expected_msg_args):
     )
     with expect_messages([expected_msg]) as checker:
         checker.visit_importfrom(importfrom_node)
+
+
+@pytest.mark.parametrize(('codelines', 'expected_msgs_args'), [
+    (
+            [
+                'import astroid',
+                'import pylint',
+                'import astroid as hypocycloid',
+                'import pylint.testutils',
+                'import _test_module',
+                'import uppercase',
+            ], [],
+    ),
+    (
+            [
+                'import astroid',
+                'import pylint',
+                'import astroid as hypocycloid',
+                'import pylint.testutils',
+                'import _test_module',
+            ], [
+                ('UppercaSe',),
+            ]
+    ),
+    (
+            [
+                'import pylint',
+                'import pylint.testutils',
+                'import _test_module',
+            ], [
+                ('astroid',),
+                ('UppercaSe',),
+            ]
+    ),
+])
+def test_unused_requirements(codelines, expected_msgs_args):
+    expected_msgs = []
+    for msg_args in expected_msgs_args:
+        expected_msgs.append(pylint.testutils.Message(
+            msg_id='unused-requirement',
+            args=msg_args,
+            line=0,
+        ))
+    with expect_messages(expected_msgs) as checker:
+        checker.open()
+        for line in codelines:
+            node = astroid.extract_node(line)
+            if isinstance(node, astroid.Import):
+                checker.visit_import(node)
+            else:
+                checker.visit_importfrom(node)
+        checker.close()
