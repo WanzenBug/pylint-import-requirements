@@ -17,7 +17,9 @@ def expect_messages(expected_messages: typing.List[pylint.testutils.Message]) \
     linter = pylint.testutils.UnittestLinter()
     yield ImportRequirementsLinter(linter)
     issued_messages = linter.release_messages()
-    assert expected_messages == issued_messages
+    assert len(expected_messages) == len(issued_messages)
+    for m in issued_messages:
+        assert any((e == m for e in expected_messages))
 
 
 @pytest.fixture(autouse=True)
