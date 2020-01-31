@@ -68,6 +68,11 @@ class ImportRequirementsLinter(BaseChecker):
                 "scope": "package"
             }
         ),
+        "W6669": (
+            "import from a different package with relative imports: '%s'",
+            "relative-import-across-packages",
+            "all imports from another package should be absolute",
+        ),
     }
 
     def __init__(self, linter):
@@ -81,6 +86,7 @@ class ImportRequirementsLinter(BaseChecker):
         )  # type: Set[Distribution]
 
         setup_result = run_setup("setup.py")
+        self.first_party_packages = setup_result.packages
         self.allowed_distributions = {
             get_distribution(x).project_name for x in setup_result.install_requires
         }
@@ -110,19 +116,18 @@ class ImportRequirementsLinter(BaseChecker):
 
     def visit_importfrom(self, node):
         """Called when a `from foo import bar` statement is visited"""
-
         modname = node.modname
         if node.level:
             # Handle relative imports
             root = node.root()
             parent_level = node.level
-            if not root.package:
-                # We are not in a package (`__init__.py`)
-                # so all relative imports are scoped to the parent package
-                parent_level += 1
-            relative_path = ("." * parent_level) + modname
-            current_package = root.name
-            modname = importlib.util.resolve_name(relative_path, current_package)
+            if root.package:
+                parent_level -= 1
+
+            if root.name.count(".") < parent_level:
+                self.add_message("relative-import-across-packages", node=node, args=(modname,))
+            # We can just return here, relative imports are always first party modules
+            return
 
         names = [name for name, _alias in node.names]
         self.check_import(node, modname, names)
@@ -139,38 +144,39 @@ class ImportRequirementsLinter(BaseChecker):
         """Run the actual check
 
         It works like this:
-        1. If its in the stdlib, nothing to fix there
-        2. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
-            2a. If we cannot import, then there should be an import-error anyways
-        3. We check the `origin` field of the spec. This normally points to the file to be imported
-            3a. If we cannot access the origin path, it must be a namespace module (since we already
+        1. If the module name is in the known first party modules, there is nothing to check
+        2. If its in the stdlib, nothing to check here
+        3. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
+            3a. If we cannot import, then there should be an import-error anyways
+        4. We check the `origin` field of the spec. This normally points to the file to be imported
+            4a. If we cannot access the origin path, it must be a namespace module (since we already
                 filtered stdlib modules)
-            3b. If we import names (i.e. the foo in `from bla import foo`) we try to import the
+            4b. If we import names (i.e. the foo in `from bla import foo`) we try to import the
                 `full` module name (`bla.foo`) and run our checks on that
-            3c. We allow partial matches. This means we get the namespace module search path and
+            4c. We allow partial matches. This means we get the namespace module search path and
                 verify that at least one package adds something to the module
-        4. If the imported file is contained in the same directory as we are currently in, it is
-           a first party package, so it is automatically allowed
         5. We verify that the imported file is installed from one of the allowed distributions
         """
-
         # Step 1
+        if self._is_first_party_module(modname):
+            print(f"    first party: {modname}")
+            return
+
+        print(f"Not first party: {modname}")
+
+        # Step 2
         if self._is_stdlib_module(modname):
             return
 
-        # Step 2
+        # Step 3
         spec = importlib.util.find_spec(modname, package=node.frame().name)
         if not spec:
             return
 
-        # Step 3
+        # Step 4
         if _is_namespace_spec(spec):
             # Must be namespace package
             self.check_namespace_module(node, spec, names)
-            return
-
-        # Step 4
-        if pathlib.Path(".").resolve() in pathlib.Path(spec.origin).resolve().parents:
             return
 
         # Step 5
@@ -215,6 +221,14 @@ class ImportRequirementsLinter(BaseChecker):
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
         import_category = self.isort_obj.place_module(module)
         return import_category in {"FUTURE", "STDLIB"}
+
+    def _is_first_party_module(self, module):
+        if module in self.first_party_packages:
+            return True
+        if "." not in module:
+            return False
+        package_name = module.rpartition(".")[0]
+        return package_name in self.first_party_packages
 
 
 def register(linter):
