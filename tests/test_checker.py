@@ -17,16 +17,17 @@ def expect_messages(expected_messages: typing.List[pylint.testutils.Message]) \
     linter = pylint.testutils.UnittestLinter()
     yield ImportRequirementsLinter(linter)
     issued_messages = linter.release_messages()
-    assert len(expected_messages) == len(issued_messages)
-    for m in issued_messages:
-        assert any((e == m for e in expected_messages))
+    assert issued_messages == expected_messages
 
 
 @pytest.fixture(autouse=True)
 def mock_package(tmpdir) -> typing.Iterator[None]:
     tmpdir.join('setup.py').write_text(
         "import setuptools\n"
-        "setuptools.setup(install_requires=['astroid', 'pylint', 'UppercaSe'])\n",
+        "setuptools.setup(\n"
+        "   packages=['_test_module'],\n"
+        "   install_requires=['astroid', 'pylint', 'UppercaSe'],\n"
+        ")\n",
         encoding='utf-8',
     )
     tmpdir.join('_test_module.py').write_text(

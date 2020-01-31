@@ -86,7 +86,7 @@ class ImportRequirementsLinter(BaseChecker):
         )  # type: Set[Distribution]
 
         setup_result = run_setup("setup.py")
-        self.first_party_packages = setup_result.packages
+        self.first_party_packages = setup_result.packages or []
         self.allowed_distributions = {
             get_distribution(x).project_name for x in setup_result.install_requires
         }
@@ -159,10 +159,7 @@ class ImportRequirementsLinter(BaseChecker):
         """
         # Step 1
         if self._is_first_party_module(modname):
-            print(f"    first party: {modname}")
             return
-
-        print(f"Not first party: {modname}")
 
         # Step 2
         if self._is_stdlib_module(modname):
