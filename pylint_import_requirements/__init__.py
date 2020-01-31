@@ -137,7 +137,7 @@ class ImportRequirementsLinter(BaseChecker):
 
     def close(self):
         superfluous_distributions = self.allowed_distributions - self.visited_distributions
-        for name in superfluous_distributions:
+        for name in sorted(superfluous_distributions):
             self.add_message("unused-requirement", line=0, args=(name,))
 
     def check_import(self, node, modname: str, names: Optional[List[str]] = None):

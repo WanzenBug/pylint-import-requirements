@@ -143,8 +143,8 @@ def test_missing_requirement_importfrom(code, expected_msg_args):
                 'import pylint.testutils',
                 'import _test_module',
             ], [
-                ('astroid',),
                 ('UppercaSe',),
+                ('astroid',),
             ]
     ),
 ])
