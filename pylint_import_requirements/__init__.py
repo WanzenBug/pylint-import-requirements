@@ -68,7 +68,10 @@ class ImportRequirementsLinter(BaseChecker):
         "W6668": (
             "install_requires: '%s' does not seem to be used",
             "unused-requirement",
-            "all requirements should be used in code at least once",
+            "All requirements should be used in code at least once.\n"
+            "If there are imports that are required because they are lazy loaded as a transitive "
+            "dependency, consider using a control comment:\n"
+            f"```# {_REQUIRES_INSTALL_PREFIX} imports=<distribution-name>```",
             {
                 "scope": "package"
             }
@@ -273,6 +276,15 @@ class ImportRequirementsLinter(BaseChecker):
         return package_name in self.first_party_packages
 
     def process_tokens(self, tokens: List[TokenInfo]):
+        """Scan tokens to respond to control comments.
+
+        An example of a control comment:
+        ```
+        import pandas as pd
+
+        pd.read_feather('file.feather')  # pylint-import-requirements: imports=pyarrow
+        ```
+        """
         for token in tokens:
             if token.type != COMMENT:
                 continue
