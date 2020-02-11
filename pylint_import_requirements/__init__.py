@@ -17,6 +17,7 @@ import pathlib
 import sys
 from collections import namedtuple, defaultdict
 from distutils.core import run_setup
+from tokenize import TokenInfo, COMMENT
 from typing import Dict, List, Optional, Set
 
 import astroid
@@ -25,9 +26,10 @@ from importlib_metadata import Distribution
 from isort import isort
 from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
-from pylint.interfaces import IAstroidChecker
+from pylint.interfaces import IAstroidChecker, ITokenChecker
 
 _DistInfo = namedtuple("_DistInfo", ("source", "allowed",))
+_REQUIRES_INSTALL_PREFIX = "pylint-import-requirements:"
 
 
 def _is_namespace_spec(spec) -> bool:
@@ -45,7 +47,7 @@ class ImportRequirementsLinter(BaseChecker):
 
     # This class variable defines the type of checker that we are implementing.
     # In this case, we are implementing an AST checker.
-    __implements__ = IAstroidChecker
+    __implements__ = (IAstroidChecker, ITokenChecker,)
 
     # The name defines a custom section of the config for this checker.
     name = "import-in-requirements"
@@ -59,6 +61,9 @@ class ImportRequirementsLinter(BaseChecker):
             "missing-requirement",
             "all import statements should be directly provided by packages which are first order "
             "dependencies",
+            {
+                "scope": "node"
+            }
         ),
         "W6668": (
             "install_requires: '%s' does not seem to be used",
@@ -72,6 +77,9 @@ class ImportRequirementsLinter(BaseChecker):
             "import from a different package with relative imports: '%s'",
             "relative-import-across-packages",
             "all imports from another package should be absolute",
+            {
+                "scope": "node"
+            }
         ),
     }
 
@@ -263,6 +271,27 @@ class ImportRequirementsLinter(BaseChecker):
             return False
         package_name = module.rpartition(".")[0]
         return package_name in self.first_party_packages
+
+    def process_tokens(self, tokens: List[TokenInfo]):
+        for token in tokens:
+            if token.type != COMMENT:
+                continue
+
+            content = token.string.lstrip("# ")
+            if not content.startswith(_REQUIRES_INSTALL_PREFIX):
+                continue
+
+            stripped_content = content[len(_REQUIRES_INSTALL_PREFIX):].strip()
+            option_name, _, option_values = stripped_content.partition("=")
+
+            if option_name != "imports":
+                self.add_message(
+                    "unrecognized-inline-option", line=token.start[0], args=(option_name,)
+                )
+                continue
+
+            for val in option_values.split(","):
+                self.visited_distributions.add(val)
 
 
 def register(linter):

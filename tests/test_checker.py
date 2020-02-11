@@ -2,6 +2,7 @@ import contextlib
 import copy
 import os
 import sys
+import tokenize
 import typing
 
 import astroid
@@ -164,4 +165,143 @@ def test_unused_requirements(codelines, expected_msgs_args):
                 checker.visit_import(node)
             else:
                 checker.visit_importfrom(node)
+        checker.close()
+
+
+@pytest.mark.parametrize(('comments', 'expected_msgs_args'), [
+    (
+            [
+                b'# pylint-import-requirements: imports=astroid,pylint,astroid,pylint,UppercaSe',
+            ], [],
+    ),
+    (
+            [
+                b'# pylint-import-requirements: imports=astroid',
+                b'# pylint-import-requirements: imports=pylint',
+                b'# pylint-import-requirements: imports=pylint',
+                b'# pylint-import-requirements: imports=_test_module',
+                b'# pylint-import-requirements: imports=UppercaSe'
+            ], []
+    ),
+    (
+            [
+                b'# pylint-import-requirements: imports=pylint',
+                b'# pylint-import-requirements: imports=_test_module',
+            ], [
+                ('UppercaSe',),
+                ('astroid',),
+            ]
+    ),
+    (
+            [
+                b'# pylint-import-requirements: imports=pylint,_test_module',
+            ], [
+                ('UppercaSe',),
+                ('astroid',),
+            ]
+    ),
+])
+def test_comment_control(comments, expected_msgs_args):
+    expected_msgs = []
+    for msg_args in expected_msgs_args:
+        expected_msgs.append(pylint.testutils.Message(
+            msg_id='unused-requirement',
+            args=msg_args,
+            line=0,
+        ))
+    with expect_messages(expected_msgs) as checker:
+        checker.open()
+        checker.process_tokens(tokenize.tokenize(iter(comments).__next__))
+        checker.close()
+
+
+@pytest.mark.parametrize(('comments', 'expected_msgs'), [
+    (
+            [
+                b'# pylint-import-requirements: imports=astroid,pylint,astroid,pylint,UppercaSe',
+            ], [],
+    ),
+    (
+            [
+                b'# pylint-import-requirements: importss=astroid',
+            ], [
+                pylint.testutils.Message(
+                    msg_id='unrecognized-inline-option',
+                    args=('importss',),
+                    line=1,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('UppercaSe',),
+                    line=0,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('astroid',),
+                    line=0,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('pylint',),
+                    line=0,
+                ),
+            ],
+    ),
+    (
+            [
+                b'# pylint-import-requirements:'
+            ], [
+                pylint.testutils.Message(
+                    msg_id='unrecognized-inline-option',
+                    args=('',),
+                    line=1,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('UppercaSe',),
+                    line=0,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('astroid',),
+                    line=0,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('pylint',),
+                    line=0,
+                ),
+            ],
+    ),
+    (
+            [
+                b'# pylint-import-requirements: imports_test_module',
+            ], [
+                pylint.testutils.Message(
+                    msg_id='unrecognized-inline-option',
+                    args=('imports_test_module',),
+                    line=1,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('UppercaSe',),
+                    line=0,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('astroid',),
+                    line=0,
+                ),
+                pylint.testutils.Message(
+                    msg_id='unused-requirement',
+                    args=('pylint',),
+                    line=0,
+                ),
+            ],
+    ),
+])
+def test_comment_control_parsing(comments, expected_msgs):
+    with expect_messages(expected_msgs) as checker:
+        checker.open()
+        checker.process_tokens(tokenize.tokenize(iter(comments).__next__))
         checker.close()
