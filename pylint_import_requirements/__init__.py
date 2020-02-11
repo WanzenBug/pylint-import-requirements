@@ -15,7 +15,7 @@ The plugin expects a `setup.py` file to exist in the working directory
 import importlib.util
 import pathlib
 import sys
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from distutils.core import run_setup
 from typing import Dict, List, Optional, Set
 
@@ -27,7 +27,7 @@ from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
 
-_FileInfo = namedtuple("_FileInfo", ("path", "source", "allowed",))
+_DistInfo = namedtuple("_DistInfo", ("source", "allowed",))
 
 
 def _is_namespace_spec(spec) -> bool:
@@ -79,7 +79,8 @@ class ImportRequirementsLinter(BaseChecker):
         """Initialize the linter by loading all 'allowed' imports from package requirements"""
         super(ImportRequirementsLinter, self).__init__(linter)
 
-        self.known_files = {}  # type: Dict[pathlib.PurePath, _FileInfo]
+        self.known_files = {}  # type: Dict[pathlib.PurePath, _DistInfo]
+        self.known_modules = defaultdict(set)  # type: defaultdict[str, Set[_DistInfo]]
         self.isort_obj = isort.SortImports(file_contents="")
         all_loadable_distributions = set(
             importlib_metadata.distributions()
@@ -101,10 +102,20 @@ class ImportRequirementsLinter(BaseChecker):
             resolved_filepaths = {x.locate() for x in distribution_files}
 
             distribution_file_info = {
-                p: _FileInfo(p, dist, allowed) for p in resolved_filepaths
+                p: _DistInfo(dist, allowed) for p in resolved_filepaths
             }
+
             # Add them to the whitelist
             self.known_files.update(distribution_file_info)
+
+            # Add source distributions to backup list
+            if not dist.read_text("SOURCES.txt"):
+                continue
+            dist_modules_text = dist.read_text("top_level.txt") or ""
+            dist_modules = dist_modules_text.split()
+
+            for mod in dist_modules:
+                self.known_modules[mod].add(_DistInfo(dist, allowed))
 
     def visit_import(self, node: astroid.node_classes.Import):
         """Called when an `import foo` statement is visited"""
@@ -186,7 +197,20 @@ class ImportRequirementsLinter(BaseChecker):
             candidate_name = known_info.source.metadata["Name"]
             self.add_message("missing-requirement", node=node, args=(modname, candidate_name))
         if not known_info:
-            self.add_message("missing-requirement", node=node, args=(modname, "<unknown>"))
+            mod_candidates = self._from_known_mod(modname) or set()
+
+            allowed_candidate = None
+            for mod in mod_candidates:
+                self.visited_distributions.add(mod.source.metadata["Name"])
+                if mod.allowed:
+                    allowed_candidate = mod
+            if allowed_candidate:
+                return
+
+            dist_names = [x.source.metadata['Name'] for x in mod_candidates] or ["<unknown>"]
+            self.add_message(
+                "missing-requirement", node=node, args=(modname, ", ".join(dist_names))
+            )
 
     def check_namespace_module(self, node, spec, names: Optional[List[str]]):
         """Try to check a module spec of a namespace module"""
@@ -212,14 +236,27 @@ class ImportRequirementsLinter(BaseChecker):
         self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
         return
 
-    def _is_stdlib_module(self, module):
+    def _from_known_mod(self, modname: str) -> Optional[Set[_DistInfo]]:
+        """Resolve the modname based on all modnames provided by distributions
+
+        This can be useful in case a loaded file is for some reason or another not listed in the
+        distribution files.
+
+        This for example happens with native extensions that are installed as
+        editable. In such a case, the distribution files only contain the 'source' files, not the
+        build extension
+        """
+        toplevel, _, _ = modname.partition(".")
+        return self.known_modules.get(toplevel)
+
+    def _is_stdlib_module(self, module) -> bool:
         """Check if the given path is from a built-in module or not"""
 
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
         import_category = self.isort_obj.place_module(module)
         return import_category in {"FUTURE", "STDLIB"}
 
-    def _is_first_party_module(self, module):
+    def _is_first_party_module(self, module) -> bool:
         if module in self.first_party_packages:
             return True
         if "." not in module:
