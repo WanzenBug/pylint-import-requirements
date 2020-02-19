@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Add
 - New lint: "unused-requirement": catches any requirement that is never
   imported in code
+- New lint: "relative-import-across-packages": catches relative imports
+  across namespace packages
 
 ## [1.0.3] - 2019-11-11
 ### Fix
