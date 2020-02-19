@@ -268,11 +268,27 @@ class ImportRequirementsLinter(BaseChecker):
         return import_category in {"FUTURE", "STDLIB"}
 
     def _is_first_party_module(self, module) -> bool:
+        """Check if the given module is from a first party package
+
+        In order to match up module names with package names it may be necessary to strip the
+        trailing segment. Generally, if there is a directory structure like:
+
+        foo:
+            __init__.py
+            bar.py
+        setup.py
+
+        In this case, package names would be ['foo'], while the module in bar.py would be referenced
+        by 'foo.bar'. In this case __init__.py would be named just 'foo'.
+
+        Because of this, there is a 2 stage lookup:
+        1. if the module name matches one of the known first party names, it is a first party module
+        2. split the name at the last '.'. If everything before the last '.' is in the first party
+           names, it is also accepted as first party module
+        """
         if module in self.first_party_packages:
             return True
-        if "." not in module:
-            return False
-        package_name = module.rpartition(".")[0]
+        package_name = module.rpartition(".")[0]  # rpartition always returns 3 items
         return package_name in self.first_party_packages
 
     def process_tokens(self, tokens: List[TokenInfo]):
