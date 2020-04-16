@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2020-04-16
+### Fixed
+- Do not mark namespace packages as first party
+  ( https://github.com/WanzenBug/pylint-import-requirements/pull/14 )
+- Restored compatibility with python 3.4
+  ( https://github.com/WanzenBug/pylint-import-requirements/pull/15 )
+
 ## [2.0.0] - 2020-02-20
 ### Add
 - New lint: "unused-requirement": catches any requirement that is never
@@ -31,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2019-10-31
 
-[Unreleased]: https://github.com/WanzenBug/pylint-import-requirements/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/WanzenBug/pylint-import-requirements/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/WanzenBug/pylint-import-requirements/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.3...v2.0.0
 [1.0.3]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/WanzenBug/pylint-import-requirements/compare/v1.0.1...v1.0.2
