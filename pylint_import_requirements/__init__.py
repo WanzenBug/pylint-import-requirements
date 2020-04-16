@@ -71,7 +71,7 @@ class ImportRequirementsLinter(BaseChecker):
             "All requirements should be used in code at least once.\n"
             "If there are imports that are required because they are lazy loaded as a transitive "
             "dependency, consider using a control comment:\n"
-            f"```# {_REQUIRES_INSTALL_PREFIX} imports=<distribution-name>```",
+            "```# {} imports=<distribution-name>```".format(_REQUIRES_INSTALL_PREFIX),
             {
                 "scope": "package"
             }
