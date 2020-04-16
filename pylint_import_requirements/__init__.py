@@ -42,6 +42,23 @@ def _is_namespace_spec(spec) -> bool:
     return spec.origin is None
 
 
+def _filter_non_namespace_packages(package_names: List[str]) -> List[str]:
+    """Given a list of packages, only return those names that are NOT a namespace package"""
+    result = []
+    for name in package_names:
+        spec = importlib.util.find_spec(name)
+        if not spec:
+            # Could not load module, so its probably not a package
+            continue
+        if _is_namespace_spec(spec) and len(spec.submodule_search_locations) >= 2:
+            # Its a namespace package with more than 2 search locations
+            continue
+        # The package is directly importable, or a namespace package with only 1
+        # search locations, i.e. not really a namespace at all
+        result.append(name)
+    return result
+
+
 class ImportRequirementsLinter(BaseChecker):
     """Check that all import statements are covered by `install_requires` statements"""
 
@@ -98,7 +115,7 @@ class ImportRequirementsLinter(BaseChecker):
         )  # type: Set[Distribution]
 
         setup_result = run_setup("setup.py")
-        self.first_party_packages = setup_result.packages or []
+        self.first_party_packages = _filter_non_namespace_packages(setup_result.packages or [])
         self.allowed_distributions = {
             get_distribution(x).project_name for x in setup_result.install_requires
         }
