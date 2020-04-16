@@ -2,5 +2,5 @@ import setuptools
 
 setuptools.setup(
     name='namespace',
-    packages=['name.space'],
+    packages=['name', 'name.space'],
 )
