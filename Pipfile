@@ -7,10 +7,23 @@ verify_ssl = true
 pylint-import-requirements = {editable = true,path = "."}
 
 [dev-packages]
-pytest = "*"
 pytest-cov = "*"
 uppercase = {path = "./tests/test-packages/uppercase"}
 namespace = {path = "./tests/test-packages/namespace"}
+
+# contraints for python3.4 support
+# https://github.com/PyCQA/astroid/commit/4a4b7faf9de8437f2b96bc7285802fd1230b7a9a
+astroid = "<2.3.0"
+# https://gitlab.com/python-devs/importlib_metadata/commit/cf58e1a6515adc4ad6f84cce5e89cd5ef830b317
+importlib-metadata = "<1.2.0"
+# https://github.com/more-itertools/more-itertools/commit/e8a4f926585d4052c6c6b4cc52389e94ffb64ae8
+more-itertools = "<8"
+# https://github.com/PyCQA/pylint/commit/927db96bbd343a61428faa0249fdeec58cfb3ebe
+pylint = ">=2.3.0,<2.4.0"
+# https://github.com/pytest-dev/pytest/commit/4d49ba65297102110ae8aeecdb3b82b23a231fba
+pytest = "<5"
+# https://github.com/jaraco/zipp/commit/05a3c52b4d41690e0471a2e283cffb500dc0329a
+zipp = "<2"
 
 [requires]
 python_version = "3"
