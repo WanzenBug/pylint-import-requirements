@@ -47,8 +47,15 @@ def _filter_non_namespace_packages(package_names: List[str]) -> List[str]:
     result = []
     for name in package_names:
         spec = importlib.util.find_spec(name)
-        if spec and not _is_namespace_spec(spec):
-            result.append(name)
+        if not spec:
+            # Could not load module, so its probably not a package
+            continue
+        if _is_namespace_spec(spec) and len(spec.submodule_search_locations) >= 2:
+            # Its a namespace package with more than 2 search locations
+            continue
+        # The package is directly importable, or a namespace package with only 1
+        # search locations, i.e. not really a namespace at all
+        result.append(name)
     return result
 
 
