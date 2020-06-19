@@ -18,7 +18,7 @@ install:
 # pipenv v2020.4.1a2 / v2020.5.28 removed support for python3.4 (in vendored pkg_resources)
 # https://github.com/pypa/pipenv/commit/3f9f359c0e563d30a60f0d1e4633eea9f964b610#diff-eec907d96e76285f711fb3cb5ab5469dR92
 - pip install --upgrade 'pipenv>=2018.10.9,<v2020.5.28'
-- pipenv sync --dev
+- pipenv install --python "$TRAVIS_PYTHON_VERSION" --deploy --dev
 - pipenv graph
 
 script:
