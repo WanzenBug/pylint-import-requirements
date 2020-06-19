@@ -25,5 +25,8 @@ pytest = "<5"
 # https://github.com/jaraco/zipp/commit/05a3c52b4d41690e0471a2e283cffb500dc0329a
 zipp = "<2"
 
+# workaround for https://github.com/pytest-dev/pytest/issues/3953
+pathlib2 = {version = "*", markers="python_version < '3.6'"}
+
 [requires]
 python_version = "3"

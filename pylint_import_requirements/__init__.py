@@ -16,7 +16,7 @@ import importlib.util
 import pathlib
 import sys
 from collections import namedtuple, defaultdict
-from distutils.core import run_setup
+from distutils.core import run_setup # pylint: disable=no-name-in-module,import-error; python3.4 pipeline only
 from tokenize import TokenInfo, COMMENT
 from typing import Dict, List, Optional, Set
 
@@ -107,7 +107,7 @@ class ImportRequirementsLinter(BaseChecker):
         """Initialize the linter by loading all 'allowed' imports from package requirements"""
         super(ImportRequirementsLinter, self).__init__(linter)
 
-        self.known_files = {}  # type: Dict[pathlib.PurePath, _DistInfo]
+        self.known_files = {}  # type: Dict[str, _DistInfo]
         self.known_modules = defaultdict(set)  # type: defaultdict[str, Set[_DistInfo]]
         self.isort_obj = isort.SortImports(file_contents="")
         all_loadable_distributions = set(
@@ -129,8 +129,9 @@ class ImportRequirementsLinter(BaseChecker):
             # Resolve the (relative) paths to absolute paths
             resolved_filepaths = {x.locate() for x in distribution_files}
 
+            # in python3.4 dict.get() always returns None when passing a pathlib.Path as key
             distribution_file_info = {
-                p: _DistInfo(dist, allowed) for p in resolved_filepaths
+                str(p): _DistInfo(dist, allowed) for p in resolved_filepaths
             }
 
             # Add them to the whitelist
@@ -217,7 +218,7 @@ class ImportRequirementsLinter(BaseChecker):
 
         # Step 5
         resolved_origin = pathlib.Path(spec.origin).resolve()
-        known_info = self.known_files.get(resolved_origin)
+        known_info = self.known_files.get(str(resolved_origin))
         if known_info:
             self.visited_distributions.add(known_info.source.metadata["Name"])
 
@@ -252,7 +253,7 @@ class ImportRequirementsLinter(BaseChecker):
         submodule_path = str(next(iter(spec.submodule_search_locations)))
         other_candidates = set()
         for path, info in self.known_files.items():
-            if not str(path).startswith(submodule_path):
+            if not path.startswith(submodule_path):
                 continue
 
             if info.allowed:
