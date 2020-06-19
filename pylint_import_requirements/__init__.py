@@ -16,7 +16,7 @@ import importlib.util
 import pathlib
 import sys
 from collections import namedtuple, defaultdict
-from distutils.core import run_setup
+from distutils.core import run_setup # pylint: disable=no-name-in-module,import-error; python3.4 pipeline only
 from tokenize import TokenInfo, COMMENT
 from typing import Dict, List, Optional, Set
 
