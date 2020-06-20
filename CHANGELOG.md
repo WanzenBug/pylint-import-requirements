@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2020-06-20
+### Fixed
+- Fixed broken wheel package
+  ( https://github.com/WanzenBug/pylint-import-requirements/issues/22 )
+
 ## [2.0.2] - 2020-06-20
 ### Fixed
 - Fixed false positive `missing-requirement` warnings on python 3.4
