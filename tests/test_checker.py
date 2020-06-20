@@ -1,9 +1,12 @@
 import contextlib
 import copy
+import importlib.abc
+import importlib.machinery
 import os
 import sys
 import tokenize
 import typing
+import unittest.mock
 
 import astroid
 import pylint.testutils
@@ -126,6 +129,26 @@ def test_clean_importfrom_ns(mock_only_namespace, code):
     importfrom_node = astroid.extract_node(code)
     with expect_messages([]) as checker:
         checker.visit_importfrom(importfrom_node)
+
+
+class _ModuleLoader:
+    pass
+
+
+class _MetaPathFinder(importlib.abc.MetaPathFinder):
+    @staticmethod
+    def find_spec(fullname, path, target=None):
+        if fullname == "custom":
+            return importlib.machinery.ModuleSpec(name=fullname, loader=_ModuleLoader())
+        return None
+
+
+@pytest.mark.parametrize("code", ["import custom", "from custom import foo"])
+def test_skip_custom_loader(mock_only_uppercase, code):
+    import_node = astroid.extract_node(code)
+    with unittest.mock.patch("sys.meta_path", new=[_MetaPathFinder] + sys.meta_path):
+        with expect_messages([]) as checker:
+            checker.visit_import(import_node)
 
 
 @pytest.mark.parametrize(('code', 'expected_msg_args'), [

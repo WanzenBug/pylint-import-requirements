@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed false positive `missing-requirement` warnings on python 3.4
   ( https://github.com/WanzenBug/pylint-import-requirements/pull/20#issuecomment-646618530 )
+- Skip imports via custom loaders not setting `origin` field module's spec.
+  Fixes a `TypeError` in `check_import`.
+  ( https://github.com/WanzenBug/pylint-import-requirements/issues/18 )
 
 ## [2.0.1] - 2020-04-16
 ### Fixed

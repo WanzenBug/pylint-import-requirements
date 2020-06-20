@@ -188,14 +188,15 @@ class ImportRequirementsLinter(BaseChecker):
         2. If its in the stdlib, nothing to check here
         3. we try to find the spec (=metadata) of the import, using `importlib.util.find_spec`
             3a. If we cannot import, then there should be an import-error anyways
-        4. We check the `origin` field of the spec. This normally points to the file to be imported
-            4a. If we cannot access the origin path, it must be a namespace module (since we already
+        4. Skip custom loaders not setting `origin` field of module's spec.
+        5. We check the `origin` field of the spec. This normally points to the file to be imported
+            5a. If we cannot access the origin path, it must be a namespace module (since we already
                 filtered stdlib modules)
-            4b. If we import names (i.e. the foo in `from bla import foo`) we try to import the
+            5b. If we import names (i.e. the foo in `from bla import foo`) we try to import the
                 `full` module name (`bla.foo`) and run our checks on that
-            4c. We allow partial matches. This means we get the namespace module search path and
+            5c. We allow partial matches. This means we get the namespace module search path and
                 verify that at least one package adds something to the module
-        5. We verify that the imported file is installed from one of the allowed distributions
+        6. We verify that the imported file is installed from one of the allowed distributions
         """
         # Step 1
         if self._is_first_party_module(modname):
@@ -211,12 +212,19 @@ class ImportRequirementsLinter(BaseChecker):
             return
 
         # Step 4
+        if spec.origin is None and (
+            spec.loader.__module__ != "_frozen_importlib_external"
+            or type(spec.loader).__name__ not in ("SourceFileLoader", "_NamespaceLoader")
+        ):
+            return
+
+        # Step 5
         if _is_namespace_spec(spec):
             # Must be namespace package
             self.check_namespace_module(node, spec, names)
             return
 
-        # Step 5
+        # Step 6
         resolved_origin = pathlib.Path(spec.origin).resolve()
         known_info = self.known_files.get(str(resolved_origin))
         if known_info:

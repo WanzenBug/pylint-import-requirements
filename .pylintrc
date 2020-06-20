@@ -1,3 +1,7 @@
 [MASTER]
 
 load-plugins=pylint_import_requirements
+
+[MESSAGE CONTROL]
+
+disable=bad-continuation # black
