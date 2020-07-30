@@ -101,6 +101,16 @@ class ImportRequirementsLinter(BaseChecker):
                 "scope": "node"
             }
         ),
+        "W6670": (
+            "import '%s' not covered by any known distribution. Candidates: [%s].",
+            "unknown-requirement",
+            "all import statements should be directly provided by packages which are first order "
+            "dependencies. this plugin was not able to find which distribution provides the "
+            "import. See https://github.com/WanzenBug/pylint-import-requirements/issues/24",
+            {
+                "scope": "node"
+            }
+        )
     }
 
     def __init__(self, linter):
@@ -120,12 +130,14 @@ class ImportRequirementsLinter(BaseChecker):
             get_distribution(x).project_name for x in setup_result.install_requires
         }
         self.visited_distributions = set()
+        self.dists_without_file_info = set()
 
         for dist in all_loadable_distributions:
             dist_name = dist.metadata["Name"]
             allowed = dist_name in self.allowed_distributions
             # Get a list of files created by the distribution
-            distribution_files = dist.files
+            distribution_files = dist.files or []
+
             # Resolve the (relative) paths to absolute paths
             resolved_filepaths = {x.locate() for x in distribution_files}
 
@@ -136,6 +148,10 @@ class ImportRequirementsLinter(BaseChecker):
 
             # Add them to the whitelist
             self.known_files.update(distribution_file_info)
+
+            # Add distributions without files to candidate list for unmatched imports
+            if not distribution_file_info:
+                self.dists_without_file_info.add(dist_name)
 
             # Add source distributions to backup list
             if not dist.read_text("SOURCES.txt"):
@@ -244,10 +260,8 @@ class ImportRequirementsLinter(BaseChecker):
             if allowed_candidate:
                 return
 
-            dist_names = [x.source.metadata['Name'] for x in mod_candidates] or ["<unknown>"]
-            self.add_message(
-                "missing-requirement", node=node, args=(modname, ", ".join(dist_names))
-            )
+            dist_names = [x.source.metadata['Name'] for x in mod_candidates]
+            self._warn_no_requirement(node, modname, dist_names)
 
     def check_namespace_module(self, node, spec, names: Optional[List[str]]):
         """Try to check a module spec of a namespace module"""
@@ -267,11 +281,18 @@ class ImportRequirementsLinter(BaseChecker):
             if info.allowed:
                 return
 
-            other_candidates.add(info.source)
+            other_candidates.add(info.source.metadata["Name"])
 
-        alternative_dist_msg = ",".join((str(o.metadata["Name"]) for o in other_candidates))
-        self.add_message("missing-requirement", node=node, args=(spec.name, alternative_dist_msg))
-        return
+        self._warn_no_requirement(node, spec.name, other_candidates)
+
+    def _warn_no_requirement(self, node, modname, candidates):
+        """warn that modname is not in requirements"""
+        if candidates:
+            candidates_fmt = ", ".join(sorted(candidates))
+            self.add_message("missing-requirement", node=node, args=(modname, candidates_fmt))
+        else:
+            candidates_fmt = ", ".join(sorted(self.dists_without_file_info))
+            self.add_message("unknown-requirement", node=node, args=(modname, candidates_fmt))
 
     def _from_known_mod(self, modname: str) -> Optional[Set[_DistInfo]]:
         """Resolve the modname based on all modnames provided by distributions
