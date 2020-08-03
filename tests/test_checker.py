@@ -3,6 +3,8 @@ import copy
 import importlib.abc
 import importlib.machinery
 import os
+import pathlib
+import shutil
 import sys
 import tokenize
 import typing
@@ -47,6 +49,21 @@ def mock_only_uppercase(tmpdir) -> typing.Iterator[None]:
         yield
     finally:
         os.chdir(old_cwd)
+        sys.path = old_path
+
+
+@pytest.fixture()
+def custom_site_path(tmpdir):
+    this_dir = pathlib.Path(__file__).parent
+    old_path = copy.copy(sys.path)
+    shutil.copytree(
+        str(this_dir.joinpath("test-site-path")),
+        tmpdir.join("site-packages").strpath
+    )
+    sys.path.insert(0, tmpdir.join("site-packages").strpath)
+    try:
+        yield
+    finally:
         sys.path = old_path
 
 
@@ -139,14 +156,16 @@ class _MetaPathFinder(importlib.abc.MetaPathFinder):
     @staticmethod
     def find_spec(fullname, path, target=None):
         if fullname == "custom":
-            return importlib.machinery.ModuleSpec(name=fullname, loader=_ModuleLoader())
+            return importlib.machinery.ModuleSpec(name=fullname,
+                                                  loader=_ModuleLoader())
         return None
 
 
 @pytest.mark.parametrize("code", ["import custom", "from custom import foo"])
 def test_skip_custom_loader(mock_only_uppercase, code):
     import_node = astroid.extract_node(code)
-    with unittest.mock.patch("sys.meta_path", new=[_MetaPathFinder] + sys.meta_path):
+    with unittest.mock.patch("sys.meta_path",
+                             new=[_MetaPathFinder] + sys.meta_path):
         with expect_messages([]) as checker:
             checker.visit_import(import_node)
 
@@ -280,14 +299,7 @@ def test_unused_requirements(mock_only_uppercase, codelines,
             line=0,
         ))
     with expect_messages(expected_msgs) as checker:
-        checker.open()
-        for line in codelines:
-            node = astroid.extract_node(line)
-            if isinstance(node, astroid.Import):
-                checker.visit_import(node)
-            else:
-                checker.visit_importfrom(node)
-        checker.close()
+        run_checker(checker, codelines)
 
 
 @pytest.mark.parametrize(('comments', 'expected_msgs_args'), [
@@ -399,14 +411,7 @@ def test_unused_requirements_ns(mock_only_namespace, codelines,
             line=0,
         ))
     with expect_messages(expected_msgs) as checker:
-        checker.open()
-        for line in codelines:
-            node = astroid.extract_node(line)
-            if isinstance(node, astroid.Import):
-                checker.visit_import(node)
-            else:
-                checker.visit_importfrom(node)
-        checker.close()
+        run_checker(checker, codelines)
 
 
 @pytest.mark.parametrize(('comments', 'expected_msgs'), [
@@ -499,3 +504,65 @@ def test_comment_control_parsing(mock_only_uppercase, comments, expected_msgs):
         checker.open()
         checker.process_tokens(tokenize.tokenize(iter(comments).__next__))
         checker.close()
+
+
+@pytest.mark.parametrize(('code', 'expected_msg_args'), [
+    (
+            'import foo',
+            ('foo', 'bar, foo')
+    ),
+    (
+            'import bar.baz',
+            ('bar.baz', 'bar, foo')
+    ),
+    (
+            'import bar.bar',
+            ('bar.bar', 'bar, foo')
+    ),
+])
+def test_missing_dist_meta_files_import(custom_site_path, mock_only_namespace,
+                                        code,
+                                        expected_msg_args):
+    import_node = astroid.extract_node(code)
+    expected_msg = pylint.testutils.Message(
+        msg_id='unknown-requirement',
+        args=expected_msg_args,
+        node=import_node,
+    )
+    with expect_messages([expected_msg]) as checker:
+        checker.visit_import(import_node)
+
+
+@pytest.mark.parametrize(('code', 'expected_msg_args'), [
+    (
+            'from bar import baz',
+            ('bar.baz', 'bar, foo')
+    ),
+    (
+            'from bar import bar',
+            ('bar.bar', 'bar, foo')
+    ),
+])
+def test_missing_dist_meta_files_importfrom(custom_site_path,
+                                            mock_only_namespace, code,
+                                            expected_msg_args):
+    import_node = astroid.extract_node(code)
+    expected_msg = pylint.testutils.Message(
+        msg_id='unknown-requirement',
+        args=expected_msg_args,
+        node=import_node,
+    )
+    with expect_messages([expected_msg]) as checker:
+        checker.visit_importfrom(import_node)
+
+
+def run_checker(checker, lines):
+    """run the linter on import statements"""
+    checker.open()
+    for line in lines:
+        node = astroid.extract_node(line)
+        if isinstance(node, astroid.Import):
+            checker.visit_import(node)
+        else:
+            checker.visit_importfrom(node)
+    checker.close()

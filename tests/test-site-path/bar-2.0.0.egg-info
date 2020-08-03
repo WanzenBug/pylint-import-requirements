@@ -1,0 +1,19 @@
+Metadata-Version: 1.2
+Name: bar
+Version: 2.0.0
+Summary: null
+Author: Moritz "WanzenBug" Wanzenböck
+Author-email: moritz@wanzenbug.xyz
+Maintainer: Moritz "WanzenBug" Wanzenböck
+Maintainer-email: moritz@wanzenbug.xyz
+License: MIT
+Description:
+    Utterly useless
+Keywords: nonsense
+Platform: UNKNOWN
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
