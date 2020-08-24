@@ -32,12 +32,11 @@ _REQUIRES_INSTALL_PREFIX = "pylint-import-requirements:"
 
 
 def _isort_place_module(module_name: str) -> str:
+    # pylint: disable=no-member
     if hasattr(isort, "place_module"):  # isort >= v5
-        return isort.place_module(module_name)  # pylint: disable=no-member
+        return isort.place_module(module_name)
     if not hasattr(_isort_place_module, "sorter"):
-        _isort_place_module.sorter = isort.SortImports(
-            file_contents=""
-        )  # pylint: disable=no-member
+        _isort_place_module.sorter = isort.SortImports(file_contents="")
     return _isort_place_module.sorter.place_module(module_name)
 
 
@@ -131,7 +130,7 @@ class ImportRequirementsLinter(BaseChecker):
 
     def __init__(self, linter):
         """Initialize the linter by loading all 'allowed' imports from package requirements"""
-        super(ImportRequirementsLinter, self).__init__(linter)
+        super().__init__(linter)
 
         self.known_files = {}  # type: Dict[str, _DistInfo]
         self.known_modules = defaultdict(set)  # type: defaultdict[str, Set[_DistInfo]]
