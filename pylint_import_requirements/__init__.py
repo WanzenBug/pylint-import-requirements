@@ -22,14 +22,19 @@ from typing import Dict, List, Optional, Set
 
 import astroid
 import importlib_metadata
+import isort
 from importlib_metadata import Distribution
-from isort import isort
 from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker, ITokenChecker
 
 _DistInfo = namedtuple("_DistInfo", ("source", "allowed",))
 _REQUIRES_INSTALL_PREFIX = "pylint-import-requirements:"
+
+if hasattr(isort, "place_module"):  # isort >= v5
+    _isort_place_module = isort.place_module
+else:
+    _isort_place_module = isort.SortImports(file_contents="").place_module
 
 
 def _is_namespace_spec(spec) -> bool:
@@ -119,7 +124,6 @@ class ImportRequirementsLinter(BaseChecker):
 
         self.known_files = {}  # type: Dict[str, _DistInfo]
         self.known_modules = defaultdict(set)  # type: defaultdict[str, Set[_DistInfo]]
-        self.isort_obj = isort.SortImports(file_contents="")
         all_loadable_distributions = set(
             importlib_metadata.distributions()
         )  # type: Set[Distribution]
@@ -311,7 +315,7 @@ class ImportRequirementsLinter(BaseChecker):
         """Check if the given path is from a built-in module or not"""
 
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
-        import_category = self.isort_obj.place_module(module)
+        import_category = _isort_place_module(module)
         return import_category in {"FUTURE", "STDLIB"}
 
     def _is_first_party_module(self, module) -> bool:
