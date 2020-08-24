@@ -23,7 +23,6 @@ from typing import Dict, List, Optional, Set
 import astroid
 import importlib_metadata
 import isort
-from importlib_metadata import Distribution
 from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker, ITokenChecker
