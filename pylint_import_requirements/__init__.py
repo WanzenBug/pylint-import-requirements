@@ -31,10 +31,22 @@ from pylint.interfaces import IAstroidChecker, ITokenChecker
 _DistInfo = namedtuple("_DistInfo", ("source", "allowed",))
 _REQUIRES_INSTALL_PREFIX = "pylint-import-requirements:"
 
-if hasattr(isort, "place_module"):  # isort >= v5
-    _isort_place_module = isort.place_module
-else:
-    _isort_place_module = isort.SortImports(file_contents="").place_module
+
+def _isort_place_module(module_name: str) -> str:
+    if hasattr(isort, "place_module"):  # isort >= v5
+        return isort.place_module(module_name)  # pylint: disable=no-member
+    if not hasattr(_isort_place_module, "sorter"):
+        _isort_place_module.sorter = isort.SortImports(
+            file_contents=""
+        )  # pylint: disable=no-member
+    return _isort_place_module.sorter.place_module(module_name)
+
+
+def _is_stdlib_module(module_name: str) -> bool:
+    """Check if the given path is from a built-in module or not"""
+    # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
+    import_category = _isort_place_module(module_name)
+    return import_category in {"FUTURE", "STDLIB"}
 
 
 def _is_namespace_spec(spec) -> bool:
@@ -223,7 +235,7 @@ class ImportRequirementsLinter(BaseChecker):
             return
 
         # Step 2
-        if self._is_stdlib_module(modname):
+        if _is_stdlib_module(modname):
             return
 
         # Step 3
@@ -310,13 +322,6 @@ class ImportRequirementsLinter(BaseChecker):
         """
         toplevel, _, _ = modname.partition(".")
         return self.known_modules.get(toplevel)
-
-    def _is_stdlib_module(self, module) -> bool:
-        """Check if the given path is from a built-in module or not"""
-
-        # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
-        import_category = _isort_place_module(module)
-        return import_category in {"FUTURE", "STDLIB"}
 
     def _is_first_party_module(self, module) -> bool:
         """Check if the given module is from a first party package

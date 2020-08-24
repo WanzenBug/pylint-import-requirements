@@ -1,6 +1,6 @@
 import pytest
 
-from pylint_import_requirements import _isort_place_module
+from pylint_import_requirements import _isort_place_module, _is_stdlib_module
 
 
 @pytest.mark.parametrize(
@@ -14,3 +14,16 @@ from pylint_import_requirements import _isort_place_module
 )
 def test__isort_place_module(module_name, category):
     assert _isort_place_module(module_name) == category
+
+
+@pytest.mark.parametrize(
+    ("module_name", "is_stdlib_module"),
+    [
+        ("astroid", False),
+        ("io", True),
+        ("pylint_import_requirements", False),
+        ("subprocess", True),
+    ],
+)
+def test__is_stdlib_module(module_name, is_stdlib_module):
+    assert _is_stdlib_module(module_name) == is_stdlib_module
