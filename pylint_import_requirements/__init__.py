@@ -22,8 +22,7 @@ from typing import Dict, List, Optional, Set
 
 import astroid
 import importlib_metadata
-from importlib_metadata import Distribution
-from isort import isort
+import isort
 from pkg_resources import get_distribution
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker, ITokenChecker
@@ -115,11 +114,15 @@ class ImportRequirementsLinter(BaseChecker):
 
     def __init__(self, linter):
         """Initialize the linter by loading all 'allowed' imports from package requirements"""
-        super(ImportRequirementsLinter, self).__init__(linter)
+        super().__init__(linter)
 
         self.known_files = {}  # type: Dict[str, _DistInfo]
         self.known_modules = defaultdict(set)  # type: defaultdict[str, Set[_DistInfo]]
-        self.isort_obj = isort.SortImports(file_contents="")
+        if hasattr(isort, "place_module"):  # isort >= v5
+            self._isort_place_module = isort.place_module  # pylint: disable=no-member
+        else:
+            sorter = isort.SortImports(file_contents="")  # pylint: disable=no-member
+            self._isort_place_module = sorter.place_module
         all_loadable_distributions = set(
             importlib_metadata.distributions()
         )  # type: Set[Distribution]
@@ -307,11 +310,10 @@ class ImportRequirementsLinter(BaseChecker):
         toplevel, _, _ = modname.partition(".")
         return self.known_modules.get(toplevel)
 
-    def _is_stdlib_module(self, module) -> bool:
+    def _is_stdlib_module(self, module_name: str) -> bool:
         """Check if the given path is from a built-in module or not"""
-
         # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
-        import_category = self.isort_obj.place_module(module)
+        import_category = self._isort_place_module(module_name)
         return import_category in {"FUTURE", "STDLIB"}
 
     def _is_first_party_module(self, module) -> bool:
