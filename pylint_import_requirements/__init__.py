@@ -31,22 +31,6 @@ _DistInfo = namedtuple("_DistInfo", ("source", "allowed",))
 _REQUIRES_INSTALL_PREFIX = "pylint-import-requirements:"
 
 
-def _isort_place_module(module_name: str) -> str:
-    # pylint: disable=no-member
-    if hasattr(isort, "place_module"):  # isort >= v5
-        return isort.place_module(module_name)
-    if not hasattr(_isort_place_module, "sorter"):
-        _isort_place_module.sorter = isort.SortImports(file_contents="")
-    return _isort_place_module.sorter.place_module(module_name)
-
-
-def _is_stdlib_module(module_name: str) -> bool:
-    """Check if the given path is from a built-in module or not"""
-    # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
-    import_category = _isort_place_module(module_name)
-    return import_category in {"FUTURE", "STDLIB"}
-
-
 def _is_namespace_spec(spec) -> bool:
     """Check whether the given spec is from a namespace module or not"""
     if sys.version_info < (3, 7, 0):
@@ -134,6 +118,11 @@ class ImportRequirementsLinter(BaseChecker):
 
         self.known_files = {}  # type: Dict[str, _DistInfo]
         self.known_modules = defaultdict(set)  # type: defaultdict[str, Set[_DistInfo]]
+        if hasattr(isort, "place_module"):  # isort >= v5
+            self._isort_place_module = isort.place_module  # pylint: disable=no-member
+        else:
+            sorter = isort.SortImports(file_contents="")  # pylint: disable=no-member
+            self._isort_place_module = sorter.place_module
         all_loadable_distributions = set(
             importlib_metadata.distributions()
         )  # type: Set[Distribution]
@@ -233,7 +222,7 @@ class ImportRequirementsLinter(BaseChecker):
             return
 
         # Step 2
-        if _is_stdlib_module(modname):
+        if self._is_stdlib_module(modname):
             return
 
         # Step 3
@@ -320,6 +309,12 @@ class ImportRequirementsLinter(BaseChecker):
         """
         toplevel, _, _ = modname.partition(".")
         return self.known_modules.get(toplevel)
+
+    def _is_stdlib_module(self, module_name: str) -> bool:
+        """Check if the given path is from a built-in module or not"""
+        # Approach taken from https://github.com/PyCQA/pylint/blob/master/pylint/checkers/imports.py
+        import_category = self._isort_place_module(module_name)
+        return import_category in {"FUTURE", "STDLIB"}
 
     def _is_first_party_module(self, module) -> bool:
         """Check if the given module is from a first party package

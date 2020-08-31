@@ -1,6 +1,16 @@
+import pylint.testutils
 import pytest
 
-from pylint_import_requirements import _isort_place_module, _is_stdlib_module
+import pylint_import_requirements
+
+# pylint: disable=redefined-outer-name,protected-access
+
+
+@pytest.fixture(scope="module")
+def checker():
+    return pylint_import_requirements.ImportRequirementsLinter(
+        linter=pylint.testutils.UnittestLinter()
+    )
 
 
 @pytest.mark.parametrize(
@@ -12,8 +22,8 @@ from pylint_import_requirements import _isort_place_module, _is_stdlib_module
         ("subprocess", "STDLIB"),
     ],
 )
-def test__isort_place_module(module_name, category):
-    assert _isort_place_module(module_name) == category
+def test__isort_place_module(checker, module_name, category):
+    assert checker._isort_place_module(module_name) == category
 
 
 @pytest.mark.parametrize(
@@ -25,5 +35,5 @@ def test__isort_place_module(module_name, category):
         ("subprocess", True),
     ],
 )
-def test__is_stdlib_module(module_name, is_stdlib_module):
-    assert _is_stdlib_module(module_name) == is_stdlib_module
+def test__is_stdlib_module(checker, module_name, is_stdlib_module):
+    assert checker._is_stdlib_module(module_name) == is_stdlib_module
