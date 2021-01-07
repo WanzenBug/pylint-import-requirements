@@ -29,8 +29,9 @@ install:
 - if [ "$TRAVIS_PYTHON_VERSION" = "3.4" ]; then mv Pipfile.lock-python3.4 Pipfile.lock; fi
 - export PIPENV_IGNORE_VIRTUALENVS=1
 - pipenv install --python "$TRAVIS_PYTHON_VERSION" --deploy --dev
+# `pipenv install --select-upgrade [package]` also upgrades dependencies (not reproducible)
 - if [ ! -z "$ISORT_VERSION" ]; then
-    pipenv install --selective-upgrade "isort==$ISORT_VERSION";
+    pipenv run pip install "isort==$ISORT_VERSION";
   fi
 - pipenv graph
 
