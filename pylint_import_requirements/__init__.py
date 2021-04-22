@@ -231,9 +231,14 @@ class ImportRequirementsLinter(BaseChecker):
             return
 
         # Step 4
-        if spec.origin is None and (
-            spec.loader.__module__ != "_frozen_importlib_external"
-            or type(spec.loader).__name__ not in ("SourceFileLoader", "_NamespaceLoader")
+        if (
+            spec.origin is None
+            and spec.loader is not None
+            and (
+                spec.loader.__module__ != "_frozen_importlib_external"
+                or type(spec.loader).__name__
+                not in ("SourceFileLoader", "_NamespaceLoader")
+            )
         ):
             return
 
